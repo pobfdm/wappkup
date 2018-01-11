@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">WappKup</string>
+    <string name="wifi_is_down">Wifi non connesso!</string>
+    <string name="i_need_Read_Write_permissions">Ho bisogno dei permessi di scrittura e lettura per funzionare!</string>
+    <string name="writing_permissions_granted">Permessi di scrittura concessi!</string>
+    <string name="reading_permissions_granted">Permesi di lettura concessi!</string>
+    <string name="error_on_start_ftp_server">Errore all\'avvio del server!</string>
+    <string name="share_with">Condividi con...</string>
+    <string name="server_started">Server avviato.</string>
+    <string name="click_on_url_to_share">Clicca sul collegamento per condividerlo</string>
+    <string name="server_stopped">Server spento.</string>
+    <string name="are_you_sure_you_want_to_exit">Sei sicuro di voler uscire ?</string>
+    <string name="yes">si</string>
+    <string name="no">no</string>
+    <string name="okay">va bene</string>
+    <string name="wappkup_need_to_be_restarted">Wappkupp ha bisogno di essere riavviato!</string>
+    <string name="sharing_is_OFF">Condivisione spenta</string>
+    <string name="sharing_is_ON">Condivisione accesa</string>
+    <string name="about">Informazioni su...</string>
+    <string name="preferences">Preferenze</string>
+    <string name="select_folder">Seleziona cartella:</string>
+    <string name="share">Condividi</string>
+    <string name="read_Write_on_external_devices_denided">Permessi di lettura/Scrittura su memorie esterne negati !</string>
+    <string name="alert">Attenzione</string>
+    <string name="exit">Uscita</string>
+</resources>

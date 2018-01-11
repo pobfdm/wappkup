@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_name">WappKup</string>
+    <string name="wifi_is_down">Wifi is down!</string>
+    <string name="i_need_Read_Write_permissions">I need Read/Write permissions for working!</string>
+    <string name="writing_permissions_granted">Write permissions granted!</string>
+    <string name="reading_permissions_granted">Read permissions granted!</string>
+    <string name="read_Write_on_external_devices_denided">Read/Write on external devices denided!</string>
+    <string name="error_on_start_ftp_server">Error on start FTP server!</string>
+    <string name="share_with">Share with...</string>
+    <string name="server_started">Server started.</string>
+    <string name="click_on_url_to_share">Click on url to share it</string>
+    <string name="server_stopped">Server stopped.</string>
+    <string name="are_you_sure_you_want_to_exit">Are you sure you want to exit?</string>
+    <string name="yes">yes</string>
+    <string name="no">no</string>
+    <string name="okay">okay</string>
+    <string name="wappkup_need_to_be_restarted">Wappkup need to be restarted!</string>
+    <string name="sharing_is_OFF">Sharing is OFF</string>
+    <string name="sharing_is_ON">Sharing is ON</string>
+    <string name="about">About...</string>
+    <string name="preferences">Preferences</string>
+    <string name="select_folder">Select folder:</string>
+    <string name="share">Share</string>
+    <string name="alert">Alert</string>
+    <string name="exit">Exit</string>
+</resources>
