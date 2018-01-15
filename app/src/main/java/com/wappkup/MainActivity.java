@@ -1,5 +1,6 @@
 package com.wappkup;
 
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -7,6 +8,9 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.Color;
+import android.net.Uri;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
@@ -15,7 +19,6 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.text.Html;
 import android.text.format.Formatter;
 import android.view.Gravity;
 import android.view.Menu;
@@ -23,10 +26,20 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.Spinner;
+import android.widget.TabHost;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
+
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.WriterException;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.integration.android.IntentIntegrator;
+import com.google.zxing.integration.android.IntentResult;
+import com.google.zxing.qrcode.QRCodeWriter;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -52,15 +65,21 @@ public class MainActivity extends AppCompatActivity {
     private static final int MY_PERMISSIONS_READ_EXTERNAL_STORAGE = 0;
     private static final int MY_PERMISSIONS_WRITE_EXTERNAL_STORAGE = 0;
 
+    public static TextView lblServerUri;
+
     ToggleButton toggleFtpServer;
-    TextView txtStatus, txtUrl, txtPassword, txtDebug;
+    TextView txtStatus, txtUrl, txtPassword;
     Spinner spinnerMountpoints;
+    Button btnScanQr;
 
     FtpServer server;
     FtpServerFactory serverFactory ;
     String password;
+    public static String serverUri; //for connection with external server
 
     List<String> mountPoints = new ArrayList<String>();
+
+
 
 
     public class checkThread extends Thread {
@@ -477,6 +496,8 @@ public class MainActivity extends AppCompatActivity {
                 txtUrl.setVisibility(View.VISIBLE);
                 txtPassword.setVisibility(View.VISIBLE);
                 toast(this.getString(R.string.click_on_url_to_share));
+                //qrcode
+                qrcodeShow("ftp://"+lblUser+":"+password+"@"+getIp()+":2221/");
             }
         }else{
             server.suspend();
@@ -491,7 +512,42 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    public void scanQr(View v)
+    {
+        IntentIntegrator scanIntegrator = new IntentIntegrator(this);
+        scanIntegrator.initiateScan();
 
+    }
+    public void onActivityResult(int requestCode, int resultCode, Intent intent)
+    {
+        IntentResult scanningResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, intent);
+        if (scanningResult != null)
+        {
+            String scanFormat = scanningResult.getFormatName();
+            String scanContent = scanningResult.getContents();
+            lblServerUri.setText(scanContent);
+
+            runFtpClient(null);
+
+        }else{
+            Toast toast = Toast.makeText(getApplicationContext(),
+                    "No scan data received!", Toast.LENGTH_SHORT);
+            toast.show();
+        }
+    }
+
+    public void runFtpClient(View v)
+    {
+        if (!lblServerUri.getText().toString().isEmpty())
+        {
+            //start ftp client...
+            Intent ftpClientIntent = new Intent(getApplicationContext(), FtpClientActivity.class);
+            startActivity(ftpClientIntent);
+        }else{
+            toast(getString(R.string.url_wrong));
+        }
+
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -509,13 +565,8 @@ public class MainActivity extends AppCompatActivity {
         txtUrl.setVisibility(View.INVISIBLE);
 
         spinnerMountpoints = findViewById(R.id.spinnerMountPoints);
-        txtDebug = findViewById(R.id.txtDebug);
 
-
-
-        //only for debug
-        txtDebug.setVisibility(View.INVISIBLE);
-
+        btnScanQr=findViewById(R.id.btnScanQr);
 
         serverFactory = new FtpServerFactory();
         server = serverFactory.createServer();
@@ -533,6 +584,25 @@ public class MainActivity extends AppCompatActivity {
             print("Permission errors");
             requestPermission();
         }
+
+        //Tab Host
+        TabHost host = (TabHost)findViewById(R.id.tabhostMain);
+        host.setup();
+
+        //Tab 1
+        TabHost.TabSpec spec = host.newTabSpec("tab1");
+        spec.setContent(R.id.tab1);
+        spec.setIndicator(this.getString(R.string.share));
+        host.addTab(spec);
+
+        //Tab 2
+        spec = host.newTabSpec("tab2");
+        spec.setContent(R.id.tab2);
+        spec.setIndicator(this.getString(R.string.browse));
+        host.addTab(spec);
+
+        lblServerUri= findViewById(R.id.lblServerUri);
+
 
     }
 
@@ -573,7 +643,7 @@ public class MainActivity extends AppCompatActivity {
                 .setTitle(this.getString(R.string.about));
         builder.setPositiveButton(this.getString(R.string.okay), new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int id) {
-                //nothing
+                //noxthing
             }
         });
         AlertDialog dialog = builder.create();
@@ -581,6 +651,25 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    public void qrcodeShow(String str)
+    {
+        QRCodeWriter writer = new QRCodeWriter();
+        try {
+            BitMatrix bitMatrix = writer.encode(str, BarcodeFormat.QR_CODE, 512, 512);
+            int width = bitMatrix.getWidth();
+            int height = bitMatrix.getHeight();
+            Bitmap bmp = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
+            for (int x = 0; x < width; x++) {
+                for (int y = 0; y < height; y++) {
+                    bmp.setPixel(x, y, bitMatrix.get(x, y) ? Color.BLACK : Color.WHITE);
+                }
+            }
+            ((ImageView) findViewById(R.id.imgQR)).setImageBitmap(bmp);
+
+        } catch (WriterException e) {
+            e.printStackTrace();
+        }
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {

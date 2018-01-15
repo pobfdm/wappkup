@@ -23,4 +23,8 @@
     <string name="share">Share</string>
     <string name="alert">Alert</string>
     <string name="exit">Exit</string>
+    <string name="browse">browse</string>
+    <string name="scan_qr_code">Scan QR code</string>
+    <string name="show_files">Show files</string>
+    <string name="url_wrong">Url is wrong!</string>
 </resources>

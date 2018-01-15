@@ -24,4 +24,8 @@
     <string name="read_Write_on_external_devices_denided">Permessi di lettura/Scrittura su memorie esterne negati !</string>
     <string name="alert">Attenzione</string>
     <string name="exit">Uscita</string>
+    <string name="browse">Apri</string>
+    <string name="scan_qr_code">"Scansiona codice QR "</string>
+    <string name="show_files">Mostra files</string>
+    <string name="url_wrong">Url sbagliato!</string>
 </resources>
