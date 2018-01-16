@@ -536,11 +536,21 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    public boolean uriIsCorrect(String uri)
+    {
+        if (uri.contains("ftp://"))
+        {
+            return true;
+        }else{
+            return false;
+        }
+    }
+
     public void runFtpClient(View v)
     {
-        if (!lblServerUri.getText().toString().isEmpty())
+        if (uriIsCorrect(lblServerUri.getText().toString()))
         {
-            //start ftp client...
+            //start internal ftp client...
             Intent ftpClientIntent = new Intent(getApplicationContext(), FtpClientActivity.class);
             startActivity(ftpClientIntent);
         }else{

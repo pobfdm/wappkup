@@ -4,8 +4,9 @@ Main Author:
 
 Included libs:
 		Apache FtpServer  - (https://mina.apache.org/ftpserver-project/)
-		org.apache.commons.io - (https://commons.apache.org/proper/commons-io/javadocs/api-2.5/org/apache/commons/io/FileUtils.html)
+		Apache commons.io - (https://commons.apache.org/proper/commons-io/javadocs/api-2.5/org/apache/commons/io/FileUtils.html)
 		Zxing - (https://github.com/zxing/zxing)
+		Apache commons-net (http://commons.apache.org/proper/commons-net/index.html)
 Images:
 		Cup:
 		https://openclipart.org/detail/5254/cup
@@ -16,6 +17,6 @@ Images:
 		Files icons:
 		https://openclipart.org/detail/192197/file-extension-icons
 		
-		Dir icon:
+		Folder icon:
 		https://openclipart.org/detail/211746/matticonsfoldergreen
 
