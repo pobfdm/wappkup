@@ -27,4 +27,9 @@
     <string name="scan_qr_code">Scan QR code</string>
     <string name="show_files">Show files</string>
     <string name="url_wrong">Url is wrong!</string>
+    <string name="loading">Loading...</string>
+    <string name="ready">Ready.</string>
+    <string name="error_on_connection">Error on connection!</string>
+    <string name="folder">Folder</string>
+    <string name="file">File</string>
 </resources>

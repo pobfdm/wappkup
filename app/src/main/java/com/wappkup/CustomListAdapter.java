@@ -13,15 +13,17 @@ public class CustomListAdapter extends ArrayAdapter<String> {
 
     private final Activity context;
     private final String[] files;
+    private final String[] filesDescr;
     private final Integer[] icons;
 
-    public CustomListAdapter(Activity context, String[] files, Integer[] icons) {
+    public CustomListAdapter(Activity context, String[] files, Integer[] icons, String[] filesDescr) {
 
         super(context, R.layout.file_list_model, files);
 
         this.context=context;
         this.files=files;
         this.icons=icons;
+        this.filesDescr=filesDescr;
     }
 
     public View getView(int position, View view, ViewGroup parent) {
@@ -34,7 +36,7 @@ public class CustomListAdapter extends ArrayAdapter<String> {
 
         txtTitle.setText(files[position]);
         imageView.setImageResource(icons[position]);
-        extratxt.setText("Descrizione "+files[position]);
+        extratxt.setText(filesDescr[position]);
         return rowView;
 
     };

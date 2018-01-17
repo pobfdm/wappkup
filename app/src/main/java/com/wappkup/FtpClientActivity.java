@@ -1,7 +1,12 @@
 package com.wappkup;
 
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
+import android.os.Environment;
 import android.os.StrictMode;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -9,12 +14,15 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.MimeTypeMap;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.support.v7.widget.Toolbar;
 
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.net.ftp.FTP;
@@ -22,16 +30,45 @@ import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPFile;
 import org.apache.commons.net.ftp.FTPReply;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import  static com.wappkup.MainActivity.lblServerUri;
 
 public class FtpClientActivity extends AppCompatActivity {
     ListView listViewFiles;
+    ProgressBar progressBar;
     ArrayList<String> filesList = new ArrayList<String>();
+    ArrayList<String> filesListDescr = new ArrayList<String>();
     ArrayList<Integer> imgiconsList = new ArrayList<Integer>();
     String CurrDir="/";
+
+
+    public void alert(String m, final boolean afterExit)
+    {
+        AlertDialog.Builder builder;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            builder = new AlertDialog.Builder(this,android.R.style.Theme_Material_Dialog_Alert);
+        } else {
+            builder = new AlertDialog.Builder(this);
+        }
+
+        builder.setMessage(m)
+                .setCancelable(false)
+                .setPositiveButton(this.getString(R.string.okay), new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+                        if (afterExit==true) FtpClientActivity.this.finish();
+                    }
+                });
+
+        AlertDialog alert = builder.create();
+        alert.show();
+    }
+
 
     protected void toast(String msg)
     {
@@ -43,7 +80,109 @@ public class FtpClientActivity extends AppCompatActivity {
         toast.show();
     }
 
+    public static boolean downloadSingleFile(FTPClient ftpClient,
+                                             String remoteFilePath, String savePath) throws IOException
+    {
+        File downloadFile = new File(savePath);
 
+        File parentDir = downloadFile.getParentFile();
+        if (!parentDir.exists()) {
+            parentDir.mkdir();
+        }
+
+        OutputStream outputStream = new BufferedOutputStream(
+                new FileOutputStream(downloadFile));
+        try {
+            ftpClient.setFileType(FTP.BINARY_FILE_TYPE);
+            return ftpClient.retrieveFile(remoteFilePath, outputStream);
+        } catch (IOException ex) {
+            throw ex;
+        } finally {
+            if (outputStream != null) {
+                outputStream.close();
+            }
+        }
+    }
+
+
+    private String getMimeType(String url)
+    {
+        String parts[]=url.split("\\.");
+        String extension=parts[parts.length-1];
+        String type = null;
+        if (extension != null) {
+            MimeTypeMap mime = MimeTypeMap.getSingleton();
+            type = mime.getMimeTypeFromExtension(extension);
+        }
+        return type;
+    }
+
+    public void OpenFileByMime(final File temp_file)
+    {
+        runOnUiThread(new Runnable() {
+            public void run() {
+                Intent intent = new Intent();
+                intent.setAction(android.content.Intent.ACTION_VIEW);
+                intent.setDataAndType(Uri.fromFile(temp_file),getMimeType(temp_file.getAbsolutePath()));
+                startActivity(intent);
+            }
+        });
+
+
+
+    }
+
+    public void openFile(String src)
+    {
+        Uri ftpUri = Uri.parse(lblServerUri.getText().toString());
+        String[] userInfo=ftpUri.getUserInfo().split(":");
+        String username= userInfo[0];
+        String password =userInfo[1];
+        String hostname =ftpUri.getHost();
+        int port = ftpUri.getPort();
+
+        FTPClient ftpClient = new FTPClient();
+
+        try {
+            // connect and login to the server
+            ftpClient.connect(hostname, port);
+            ftpClient.login(username, password);
+
+            // use local passive mode to pass firewall
+            ftpClient.enterLocalPassiveMode();
+
+            System.out.println("Connected");
+
+            String remoteFilePath = src;
+            final String saveFilePath =
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                            +"/"+FilenameUtils.getName(src);
+
+            downloadSingleFile(ftpClient, remoteFilePath,  saveFilePath);
+
+            //only for debug
+            runOnUiThread(new Runnable() {
+                public void run() {
+                    alert(saveFilePath,false);
+                }
+            });
+
+
+
+            // log out and disconnect from the server
+            ftpClient.logout();
+            ftpClient.disconnect();
+
+            //Now open the file
+            File f = new File(saveFilePath);
+            OpenFileByMime(f);
+
+            System.out.println("Disconnected");
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+
+    }
 
     public void updateFiles()  {
         Uri ftpUri = Uri.parse(lblServerUri.getText().toString());
@@ -70,6 +209,14 @@ public class FtpClientActivity extends AppCompatActivity {
         //Clear the list of files
         filesList.clear();
         imgiconsList.clear();
+        filesListDescr.clear();
+
+        runOnUiThread(new Runnable() {
+            public void run() {
+                progressBar.setVisibility(View.VISIBLE);
+            }
+        });
+
 
 
         FTPClient client = new FTPClient();
@@ -85,52 +232,79 @@ public class FtpClientActivity extends AppCompatActivity {
             client.login(username, password);
 
             FTPFile[] files = client.listFiles(CurrDir);
-            for (final FTPFile file : files) {
-                System.out.println(file.getName());
 
-                if (file.isDirectory())
+            for (final FTPFile file : files)
+            {
+                System.out.println(file.getName());
+                if (!file.isDirectory())
                 {
-                    filesList.add(file.getName());
-                    imgiconsList.add(R.drawable.folder_green_50px);
-                }else{
                     String ext=getFileExtension(file.getName());
                     switch(ext) {
 
                         case "pdf":
                             filesList.add(file.getName());
                             imgiconsList.add(R.drawable.pdf);
+                            filesListDescr.add(getString(R.string.file));
                             break;
                         case "png":
                             filesList.add(file.getName());
                             imgiconsList.add(R.drawable.png);
+                            filesListDescr.add(getString(R.string.file));
                             break;
                         case "jpg":
                             filesList.add(file.getName());
                             imgiconsList.add(R.drawable.jpg);
+                            filesListDescr.add(getString(R.string.file));
                             break;
                         case "jpeg":
                             filesList.add(file.getName());
                             imgiconsList.add(R.drawable.jpg);
+                            filesListDescr.add(getString(R.string.file));
                             break;
                         case "JPG":
                             filesList.add(file.getName());
                             imgiconsList.add(R.drawable.jpg);
+                            filesListDescr.add(getString(R.string.file));
                             break;
 
                         default:
                             filesList.add(file.getName());
                             imgiconsList.add(R.drawable.file);
-
+                            filesListDescr.add(getString(R.string.file));
                     }
 
+                }else{
+                    //is directory
+                    filesList.add(file.getName());
+                    imgiconsList.add(R.drawable.folder_green_50px);
+                    filesListDescr.add(getString(R.string.folder));
                 }
             }
 
         } catch (IOException ex) {
             System.out.println("Errore nella connessione: " + ex.getMessage());
             ex.printStackTrace();
+            runOnUiThread(new Runnable() {
+                public void run() {
+                    progressBar.setVisibility(View.INVISIBLE);
+                    alert(getString(R.string.error_on_connection),true);
+                }
+            });
+
         } finally {
             try {
+                if (!client.isConnected())
+                {
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            progressBar.setVisibility(View.INVISIBLE);
+                            alert(getString(R.string.error_on_connection),true);
+                        }
+                    });
+                    return;
+                }
+
+
                 if (client.isConnected()) {
                     client.logout();
                     client.disconnect();
@@ -144,6 +318,7 @@ public class FtpClientActivity extends AppCompatActivity {
         runOnUiThread(new Runnable() {
             public void run() {
                 updateFileView();
+                progressBar.setVisibility(View.INVISIBLE);
             }
         });
 
@@ -152,15 +327,22 @@ public class FtpClientActivity extends AppCompatActivity {
 
     public void updateFileView() {
 
+        //Filename
         final String[] files ;
         files= new String[filesList.size()];
         for (int i=0 ; i<=filesList.size()-1;i++) files[i]=filesList.get(i);
 
+        //File icon
         final Integer[] imgicons;
         imgicons = new Integer[imgiconsList.size()];
         for (int i=0;i<=imgiconsList.size()-1;i++) imgicons[i]=imgiconsList.get(i);
 
-        CustomListAdapter adapter=new CustomListAdapter(this, files, imgicons);
+        //File Descr
+        final String[] descr;
+        descr = new String[filesListDescr.size()];
+        for (int i=0;i<=filesListDescr.size()-1;i++) descr[i]=filesListDescr.get(i);
+
+        CustomListAdapter adapter=new CustomListAdapter(this, files, imgicons,descr);
 
         listViewFiles.setAdapter(adapter);
         //listViewFiles.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
@@ -170,14 +352,26 @@ public class FtpClientActivity extends AppCompatActivity {
         //Callback at click
         listViewFiles.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
-            public void onItemClick(AdapterView<?> parent, View view,
-                                    int position, long id)
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id)
             {
 
-                String elemName= files[+position]; //grab filename
+                final String elemName= files[+position]; //grab filename
+                String elemDescr=descr[+position]; //grab description
                 int elemImg=imgicons[+position]; //grab icon's constant
-                Toast.makeText(getApplicationContext(), elemName, Toast.LENGTH_SHORT).show();
-                if (elemImg==R.drawable.folder_green_50px) goInsideFolder(elemName);
+
+                //if i click on folder
+                if (elemImg==R.drawable.folder_green_50px)
+                {
+                    goInsideFolder(elemName);
+                }else{
+                    Toast.makeText(getApplicationContext(), elemName, Toast.LENGTH_SHORT).show();
+                    new Thread(new Runnable(){
+                        @Override
+                        public void run() {
+                            openFile(CurrDir+ "/"+elemName);
+                        }
+                    }).start();
+                }
 
             }
         });
@@ -220,6 +414,19 @@ public class FtpClientActivity extends AppCompatActivity {
         }).start();
     }
 
+    @Override
+    protected void onResume()
+    {
+        super.onResume();
+
+        new Thread(new Runnable(){
+            @Override
+            public void run() {
+                updateFiles();
+            }
+        }).start();
+    }
+
 
 
     @Override
@@ -228,15 +435,8 @@ public class FtpClientActivity extends AppCompatActivity {
         setContentView(R.layout.activity_ftp_client);
 
         listViewFiles = findViewById(R.id.listViewFiles);
-
-        new Thread(new Runnable(){
-            @Override
-            public void run() {
-                updateFiles();
-            }
-        }).start();
-
-
+        progressBar =findViewById(R.id.progressBar);
+        progressBar.setVisibility(View.INVISIBLE);
     }
 
     @Override
