@@ -38,6 +38,8 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import  static com.wappkup.MainActivity.lblServerUri;
 
+
+
 public class FtpClientActivity extends AppCompatActivity {
     ListView listViewFiles;
     ProgressBar progressBar;
@@ -45,6 +47,8 @@ public class FtpClientActivity extends AppCompatActivity {
     ArrayList<String> filesListDescr = new ArrayList<String>();
     ArrayList<Integer> imgiconsList = new ArrayList<Integer>();
     String CurrDir="/";
+
+    ArrayList<threadsTransfers> listTrasfers = new ArrayList<threadsTransfers>();
 
 
     public void alert(String m, final boolean afterExit)
@@ -105,6 +109,18 @@ public class FtpClientActivity extends AppCompatActivity {
     }
 
 
+    public void OpenFileByMime(final File temp_file)
+    {
+        runOnUiThread(new Runnable() {
+            public void run() {
+                Intent intent = new Intent();
+                intent.setAction(android.content.Intent.ACTION_VIEW);
+                intent.setDataAndType(Uri.fromFile(temp_file),getMimeType(temp_file.getAbsolutePath()));
+                startActivity(intent);
+            }
+        });
+    }
+
     private String getMimeType(String url)
     {
         String parts[]=url.split("\\.");
@@ -117,20 +133,28 @@ public class FtpClientActivity extends AppCompatActivity {
         return type;
     }
 
-    public void OpenFileByMime(final File temp_file)
+    private void scanListTrasfers()
     {
-        runOnUiThread(new Runnable() {
-            public void run() {
-                Intent intent = new Intent();
-                intent.setAction(android.content.Intent.ACTION_VIEW);
-                intent.setDataAndType(Uri.fromFile(temp_file),getMimeType(temp_file.getAbsolutePath()));
-                startActivity(intent);
-            }
-        });
+       for (;;)
+       {
+           try {
+               Thread.sleep(2000);
+           } catch (InterruptedException e) {
+               e.printStackTrace();
+           }
 
-
-
+           //Open a file after download
+           for (int i = 0; i < listTrasfers.size(); i++) {
+               if (listTrasfers.get(i).OpenAfterDownload == true &&
+                    listTrasfers.get(i).progressPercentage == 100) {
+                    File f = new File(listTrasfers.get(i).saveFile);
+                    OpenFileByMime(f);
+                    listTrasfers.remove(i);
+               }
+           }
+       }
     }
+
 
     public void openFile(String src)
     {
@@ -156,28 +180,28 @@ public class FtpClientActivity extends AppCompatActivity {
             String remoteFilePath = src;
             final String saveFilePath =
                     Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                            +"/"+FilenameUtils.getName(src);
+                            +"/wappkup/"+FilenameUtils.getName(src);
 
-            downloadSingleFile(ftpClient, remoteFilePath,  saveFilePath);
+            //downloadSingleFile(ftpClient, remoteFilePath,  saveFilePath);
+            threadsTransfers tr = new threadsTransfers(ftpClient,remoteFilePath,saveFilePath);
+            tr.OpenAfterDownload=true;
+            listTrasfers.add(tr);
+            tr.start();
+
+
 
             //only for debug
-            runOnUiThread(new Runnable() {
+            /*runOnUiThread(new Runnable() {
                 public void run() {
                     alert(saveFilePath,false);
                 }
-            });
+            });*/
 
 
 
             // log out and disconnect from the server
-            ftpClient.logout();
-            ftpClient.disconnect();
-
-            //Now open the file
-            File f = new File(saveFilePath);
-            OpenFileByMime(f);
-
-            System.out.println("Disconnected");
+            //ftpClient.logout();
+            //ftpClient.disconnect();
         } catch (IOException ex) {
             ex.printStackTrace();
         }
@@ -349,7 +373,7 @@ public class FtpClientActivity extends AppCompatActivity {
         //listViewFiles.setItemsCanFocus(false);
         //listViewFiles.setLongClickable(true);
 
-        //Callback at click
+        //Callback at click on listView item
         listViewFiles.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id)
@@ -371,6 +395,7 @@ public class FtpClientActivity extends AppCompatActivity {
                             openFile(CurrDir+ "/"+elemName);
                         }
                     }).start();
+
                 }
 
             }
@@ -437,6 +462,13 @@ public class FtpClientActivity extends AppCompatActivity {
         listViewFiles = findViewById(R.id.listViewFiles);
         progressBar =findViewById(R.id.progressBar);
         progressBar.setVisibility(View.INVISIBLE);
+
+        new Thread(new Runnable(){
+            @Override
+            public void run() {
+                scanListTrasfers();
+            }
+        }).start();
     }
 
     @Override
