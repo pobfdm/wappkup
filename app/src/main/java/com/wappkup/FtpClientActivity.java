@@ -1,13 +1,19 @@
 package com.wappkup;
 
 import android.app.AlertDialog;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.os.StrictMode;
+import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.Gravity;
@@ -39,7 +45,6 @@ import java.util.ArrayList;
 import  static com.wappkup.MainActivity.lblServerUri;
 
 
-
 public class FtpClientActivity extends AppCompatActivity {
     ListView listViewFiles;
     ProgressBar progressBar;
@@ -48,7 +53,11 @@ public class FtpClientActivity extends AppCompatActivity {
     ArrayList<Integer> imgiconsList = new ArrayList<Integer>();
     String CurrDir="/";
 
+    ArrayList<Notification>notificationList = new ArrayList<Notification>();
+
+
     ArrayList<threadsTransfers> listTrasfers = new ArrayList<threadsTransfers>();
+    static NotificationManager notificationManager;
 
 
     public void alert(String m, final boolean afterExit)
@@ -84,29 +93,7 @@ public class FtpClientActivity extends AppCompatActivity {
         toast.show();
     }
 
-    public static boolean downloadSingleFile(FTPClient ftpClient,
-                                             String remoteFilePath, String savePath) throws IOException
-    {
-        File downloadFile = new File(savePath);
 
-        File parentDir = downloadFile.getParentFile();
-        if (!parentDir.exists()) {
-            parentDir.mkdir();
-        }
-
-        OutputStream outputStream = new BufferedOutputStream(
-                new FileOutputStream(downloadFile));
-        try {
-            ftpClient.setFileType(FTP.BINARY_FILE_TYPE);
-            return ftpClient.retrieveFile(remoteFilePath, outputStream);
-        } catch (IOException ex) {
-            throw ex;
-        } finally {
-            if (outputStream != null) {
-                outputStream.close();
-            }
-        }
-    }
 
 
     public void OpenFileByMime(final File temp_file)
@@ -133,79 +120,122 @@ public class FtpClientActivity extends AppCompatActivity {
         return type;
     }
 
+    public void createNotificationDownload(final int id, final String title, final String text)
+    {
+        runOnUiThread(new Runnable() {
+            public void run() {
+                Intent intent = new Intent(getApplicationContext(), FTPClient.class);
+                PendingIntent pIntent = PendingIntent.getActivity(getApplicationContext(),
+                        (int) System.currentTimeMillis(), intent, 0);
+
+                NotificationCompat.Builder mBuilder =
+                        new NotificationCompat.Builder(getApplicationContext())
+                                .setSmallIcon(R.drawable.logo_256)
+                                .setContentTitle(title)
+                                .setProgress(100,0,false)
+                                .setContentText(text)
+                                .setContentIntent(pIntent);
+
+                NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                notificationManager.notify(id, mBuilder.build());
+            }
+        });
+
+
+
+    }
+
+    public void updateNotification
+            (final int id, final int percent, final String title, final String text)
+    {
+        runOnUiThread(new Runnable() {
+            public void run() {
+                Intent intent = new Intent(getApplicationContext(), FTPClient.class);
+                PendingIntent pIntent = PendingIntent.getActivity(getApplicationContext(),
+                        (int) System.currentTimeMillis(), intent, 0);
+
+                NotificationCompat.Builder mBuilder =
+                        new NotificationCompat.Builder(getApplicationContext())
+                                .setSmallIcon(R.drawable.logo_256)
+                                .setContentTitle(title)
+                                .setProgress(100,percent,false)
+                                .setContentText(text)
+                                .setContentIntent(pIntent);
+
+                NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                notificationManager.notify(id, mBuilder.build());
+            }
+        });
+
+
+    }
+
+    public void deleteNotification(int notifyId) {
+        String ns = Context.NOTIFICATION_SERVICE;
+        Context ctx=getApplicationContext();
+        NotificationManager nMgr = (NotificationManager) ctx.getSystemService(ns);
+        nMgr.cancel(notifyId);
+    }
+
     private void scanListTrasfers()
     {
+
        for (;;)
        {
            try {
-               Thread.sleep(2000);
+               Thread.sleep(500);
            } catch (InterruptedException e) {
                e.printStackTrace();
            }
 
            //Open a file after download
-           for (int i = 0; i < listTrasfers.size(); i++) {
-               if (listTrasfers.get(i).OpenAfterDownload == true &&
-                    listTrasfers.get(i).progressPercentage == 100) {
-                    File f = new File(listTrasfers.get(i).saveFile);
-                    OpenFileByMime(f);
-                    listTrasfers.remove(i);
+           //for (int i = 0; i < listTrasfers.size(); i++)
+           for(threadsTransfers tr : listTrasfers)
+           {
+
+               if (tr.isAlive()) {
+                   updateNotification(tr.idNotification, tr.progressPercentage,
+                           "Downloading " + tr.progressPercentage + "%", tr.getSorceFile());
+               }else{
+                   if (tr.OpenAfterDownload)
+                   {
+                       File f = new File(tr.saveFile);
+                       OpenFileByMime(f);
+                   }
+                   //deleteNotification(tr.idNotification);
+                   if (tr.isSuccess()) {
+                       updateNotification(tr.idNotification, 100, "Done!", tr.getSorceFile());//test
+                   }else {
+                       updateNotification(tr.idNotification, 100, "Error...!", tr.getSorceFile());//test
+                   }
+
+
+                   listTrasfers.remove(listTrasfers.indexOf(tr));
                }
+
            }
        }
     }
 
 
+
     public void openFile(String src)
     {
-        Uri ftpUri = Uri.parse(lblServerUri.getText().toString());
-        String[] userInfo=ftpUri.getUserInfo().split(":");
-        String username= userInfo[0];
-        String password =userInfo[1];
-        String hostname =ftpUri.getHost();
-        int port = ftpUri.getPort();
+        //if not exsit create dir "wappkup" in download
+        File dirWappkup = new File(Environment.getExternalStoragePublicDirectory
+                (Environment.DIRECTORY_DOWNLOADS) +"/wappkup/");
+        dirWappkup.mkdir();
 
-        FTPClient ftpClient = new FTPClient();
+        String saveFilePath =
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                        +"/wappkup/"+FilenameUtils.getName(src);
 
-        try {
-            // connect and login to the server
-            ftpClient.connect(hostname, port);
-            ftpClient.login(username, password);
-
-            // use local passive mode to pass firewall
-            ftpClient.enterLocalPassiveMode();
-
-            System.out.println("Connected");
-
-            String remoteFilePath = src;
-            final String saveFilePath =
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                            +"/wappkup/"+FilenameUtils.getName(src);
-
-            //downloadSingleFile(ftpClient, remoteFilePath,  saveFilePath);
-            threadsTransfers tr = new threadsTransfers(ftpClient,remoteFilePath,saveFilePath);
-            tr.OpenAfterDownload=true;
-            listTrasfers.add(tr);
-            tr.start();
-
-
-
-            //only for debug
-            /*runOnUiThread(new Runnable() {
-                public void run() {
-                    alert(saveFilePath,false);
-                }
-            });*/
-
-
-
-            // log out and disconnect from the server
-            //ftpClient.logout();
-            //ftpClient.disconnect();
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
-
+        //Start thread for download file
+        threadsTransfers tr = new threadsTransfers(lblServerUri.getText().toString(),src,saveFilePath);
+        tr.OpenAfterDownload=true;
+        listTrasfers.add(tr);
+        createNotificationDownload(tr.idNotification,"Downloading...",src);
+        tr.start();
     }
 
     public void updateFiles()  {
@@ -273,28 +303,28 @@ public class FtpClientActivity extends AppCompatActivity {
                         case "png":
                             filesList.add(file.getName());
                             imgiconsList.add(R.drawable.png);
-                            filesListDescr.add(getString(R.string.file));
+                            filesListDescr.add(String.valueOf(file.getSize())+" bytes");
                             break;
                         case "jpg":
                             filesList.add(file.getName());
                             imgiconsList.add(R.drawable.jpg);
-                            filesListDescr.add(getString(R.string.file));
+                            filesListDescr.add(String.valueOf(file.getSize())+" bytes");
                             break;
                         case "jpeg":
                             filesList.add(file.getName());
                             imgiconsList.add(R.drawable.jpg);
-                            filesListDescr.add(getString(R.string.file));
+                            filesListDescr.add(String.valueOf(file.getSize())+" bytes");
                             break;
                         case "JPG":
                             filesList.add(file.getName());
                             imgiconsList.add(R.drawable.jpg);
-                            filesListDescr.add(getString(R.string.file));
+                            filesListDescr.add(String.valueOf(file.getSize())+" bytes");
                             break;
 
                         default:
                             filesList.add(file.getName());
                             imgiconsList.add(R.drawable.file);
-                            filesListDescr.add(getString(R.string.file));
+                            filesListDescr.add(String.valueOf(file.getSize())+" bytes");
                     }
 
                 }else{
