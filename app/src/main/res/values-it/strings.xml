@@ -28,4 +28,11 @@
     <string name="scan_qr_code">"Scansiona codice QR "</string>
     <string name="show_files">Mostra files</string>
     <string name="url_wrong">Url sbagliato!</string>
+    <string name="loading">Caricamento</string>
+    <string name="ready">Pronto.</string>
+    <string name="error_on_connection">Errore sulla connessione!</string>
+    <string name="folder">Cartella</string>
+    <string name="file">File</string>
+    <string name="error_on_download">Errore durante lo scaricamento!</string>
+    <string name="done">Fatto!</string>
 </resources>

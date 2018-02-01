@@ -204,9 +204,9 @@ public class FtpClientActivity extends AppCompatActivity {
                    }
                    //deleteNotification(tr.idNotification);
                    if (tr.isSuccess()) {
-                       updateNotification(tr.idNotification, 100, "Done!", tr.getSorceFile());//test
+                       updateNotification(tr.idNotification, 100, getString(R.string.done), tr.getSorceFile());
                    }else {
-                       updateNotification(tr.idNotification, 100, "Error...!", tr.getSorceFile());//test
+                       updateNotification(tr.idNotification, 100, getString(R.string.error_on_download), tr.getSorceFile());
                    }
 
 
