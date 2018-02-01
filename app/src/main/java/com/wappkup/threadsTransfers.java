@@ -2,6 +2,7 @@ package com.wappkup;
 
 import android.net.Uri;
 
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
@@ -59,8 +60,6 @@ public class threadsTransfers extends Thread
 
 
 
-
-
     public long getRemoteFileSize(String path)
     {
         //Connection
@@ -70,7 +69,8 @@ public class threadsTransfers extends Thread
         String password =userInfo[1];
         String hostname =ftpUri.getHost();
         int port = ftpUri.getPort();
-        long remoteFileSize=0;
+        long fileSize=0;
+        String currDir= FilenameUtils.getFullPath(origin);
 
         FTPClient ftpClientM = new FTPClient();
         try {
@@ -81,15 +81,19 @@ public class threadsTransfers extends Thread
 
             // use local passive mode to pass firewall
             ftpClientM.enterLocalPassiveMode();
-            System.out.println("Connected");
+            FTPFile[] files = ftpClientM.listFiles(currDir);
 
-            //get file size
-            FTPFile remoteFtpFile = null;
-            remoteFtpFile = ftpClientM.mlistFile(path);
-            remoteFileSize = remoteFtpFile.getSize();
+            for (final FTPFile file : files)
+            {
+                if (FilenameUtils.getName(file.getName()).equals(FilenameUtils.getName(origin)))
+                {
+                    fileSize=file.getSize();
+                }
+            }
+
             ftpClientM.logout();
             ftpClientM.disconnect();
-            return remoteFileSize;
+            return fileSize;
 
         } catch (IOException ex) {
             ex.printStackTrace();
@@ -103,8 +107,11 @@ public class threadsTransfers extends Thread
             }
         }
 
-        return remoteFileSize;
+        return fileSize;
     }
+
+
+
 
     public  long getLocalFileSize(String path)
     {
@@ -124,10 +131,6 @@ public class threadsTransfers extends Thread
     {
         //get remote file size
         final long remoteFileSize = getRemoteFileSize(origin);
-        System.out.printf("%s size: %d\n\n",origin,remoteFileSize);
-
-
-
 
         //Connection
         Uri ftpUri = Uri.parse(serverUri);
@@ -161,6 +164,7 @@ public class threadsTransfers extends Thread
             public void bytesTransferred(long totalBytesTransferred,
                                          int bytesTransferred, long streamSize)
             {
+                System.out.printf("remoteFileSize= %d \n\n",remoteFileSize);
                 if (remoteFileSize>0) {
                     progressPercentage = (int) (totalBytesTransferred * 100 / remoteFileSize);
                     System.out.printf("Progress %d percent", progressPercentage);
@@ -181,26 +185,6 @@ public class threadsTransfers extends Thread
             System.out.println("File #1 has been downloaded successfully.");
         }
         return  success;
-
-
-        // FTP Download APPROACH #2: using InputStream retrieveFileStream(String)
-        /*File downloadFile = new File(saveFile);
-        OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(downloadFile));
-        InputStream inputStream = ftpClient.retrieveFileStream(origin);
-        byte[] bytesArray = new byte[4096];
-        int bytesRead = -1;
-        while ((bytesRead = inputStream.read(bytesArray)) != -1)   {
-            outputStream.write(bytesArray, 0, bytesRead);
-        }
-
-        success = ftpClient.completePendingCommand();
-        if (success) {
-            System.out.println("File has been downloaded successfully.");
-        }
-        outputStream.close();
-        inputStream.close();
-
-        return success;*/
 
     }
 
