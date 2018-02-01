@@ -189,7 +189,6 @@ public class FtpClientActivity extends AppCompatActivity {
            }
 
            //Open a file after download
-           //for (int i = 0; i < listTrasfers.size(); i++)
            for(threadsTransfers tr : listTrasfers)
            {
 
@@ -202,11 +201,11 @@ public class FtpClientActivity extends AppCompatActivity {
                        File f = new File(tr.saveFile);
                        OpenFileByMime(f);
                    }
-                   //deleteNotification(tr.idNotification);
                    if (tr.isSuccess()) {
-                       updateNotification(tr.idNotification, 100, getString(R.string.done), tr.getSorceFile());
+                       deleteNotification(tr.idNotification);
                    }else {
-                       updateNotification(tr.idNotification, 100, getString(R.string.error_on_download), tr.getSorceFile());
+                       updateNotification(tr.idNotification, 100,
+                               getString(R.string.error_on_download), tr.getSorceFile());
                    }
 
 
