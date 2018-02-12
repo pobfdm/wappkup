@@ -21,16 +21,23 @@ import java.io.OutputStream;
 public class threadsTransfers extends Thread
 {
     public boolean active=false;
-    private enum fileType {DIR,PNG,PDF,JPG,TXT,APK};
     public String serverUri,origin, saveFile;
     public boolean OpenAfterDownload=false;
     public enum type {DOWNLOAD,UPLOAD};
     public int progressPercentage=0;
-    private boolean abort=false;
-    private boolean success=false;
     public FTPClient ftpClient;
     public static int countNotification;
     public int idNotification=0;
+
+
+    private enum fileType {DIR,PNG,PDF,JPG,TXT,APK};
+    private boolean abort=false;
+    private boolean success=false;
+    private OutputStream outputStream;
+
+
+
+
 
     public threadsTransfers(String serverUri,String origin, String saveFile)
     {
@@ -46,7 +53,11 @@ public class threadsTransfers extends Thread
     public void abortNow()
     {
         this.abort=true;
-        //non finita
+        try {
+            outputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public String getSorceFile()
@@ -164,22 +175,20 @@ public class threadsTransfers extends Thread
             public void bytesTransferred(long totalBytesTransferred,
                                          int bytesTransferred, long streamSize)
             {
-                System.out.printf("remoteFileSize= %d \n\n",remoteFileSize);
                 if (remoteFileSize>0) {
                     progressPercentage = (int) (totalBytesTransferred * 100 / remoteFileSize);
                     System.out.printf("Progress %d percent", progressPercentage);
                 }
-
             }
         };
 
         // APPROACH #1: using retrieveFile(String, OutputStream)
         ftpClient.setCopyStreamListener(streamListener);
         File downloadFile = new File(saveFile);
-        OutputStream outputStream1 = new BufferedOutputStream(new FileOutputStream(downloadFile));
+        outputStream = new BufferedOutputStream(new FileOutputStream(downloadFile));
 
-        success = ftpClient.retrieveFile(origin, outputStream1);
-        outputStream1.close();
+        success = ftpClient.retrieveFile(origin, outputStream);
+        outputStream.close();
 
         if (success) {
             System.out.println("File #1 has been downloaded successfully.");

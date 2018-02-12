@@ -34,4 +34,5 @@
     <string name="folder">Folder</string>
     <string name="file">File</string>
     <string name="done">Done!</string>
+    <string name="stopAllDownloads">Stop all downloads</string>
 </resources>

@@ -2,45 +2,34 @@ package com.wappkup;
 
 import android.app.AlertDialog;
 import android.app.Notification;
-import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
-import android.os.StrictMode;
 import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.Gravity;
-import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewGroup;
 import android.webkit.MimeTypeMap;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
-import android.widget.TextView;
 import android.widget.Toast;
-import android.support.v7.widget.Toolbar;
 
 import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPFile;
-import org.apache.commons.net.ftp.FTPReply;
 
-import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import  static com.wappkup.MainActivity.lblServerUri;
 
@@ -274,11 +263,6 @@ public class FtpClientActivity extends AppCompatActivity {
 
         FTPClient client = new FTPClient();
         try {
-            /*client.type(FTP.BINARY_FILE_TYPE);
-            client.setDefaultPort(port);
-            client.setFileType(FTP.BINARY_FILE_TYPE);
-            client.setFileType(FTP.BINARY_FILE_TYPE, FTP.ASCII_FILE_TYPE);
-            client.setFileTransferMode(FTP.BINARY_FILE_TYPE);*/
 
             client.connect(hostname, port);
             client.enterLocalPassiveMode();
@@ -503,6 +487,54 @@ public class FtpClientActivity extends AppCompatActivity {
     @Override
     public void onBackPressed() {
         goBackFolder();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.menu_clientftp, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item)
+    {
+        int id=item.getItemId();
+        switch(id)
+        {
+            case R.id.mnuStopAllDownloads:
+                //code for stop all
+                toast(getString(R.string.stopAllDownloads));
+
+                for(final threadsTransfers tr : listTrasfers)
+                {
+                        new Thread(new Runnable(){
+                            @Override
+                            public void run() {
+                                try {
+                                    tr.abortNow();
+                                    tr.ftpClient.logout();
+                                    tr.ftpClient.disconnect();
+                                    runOnUiThread(new Runnable() {
+                                        public void run() {
+                                            deleteNotification(tr.idNotification);
+                                        }
+                                    });
+                                    tr.active=false;
+                                    listTrasfers.remove(listTrasfers.indexOf(tr));
+                                } catch (Exception e){
+                                    e.printStackTrace();
+                                }
+
+                            }
+                        }).start();
+                }
+
+                break;
+
+
+        }
+        return false;
     }
 
 
